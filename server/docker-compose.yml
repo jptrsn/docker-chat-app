@@ -3,11 +3,11 @@ services:
     container_name: chat-server
     build: .
     ports:
-      - "3001:3001"
+      - "0.0.0.0:3001:3001"  # Explicitly bind to all interfaces
     environment:
       - NODE_ENV=production
       - DATABASE_URL=postgresql://chatuser:chatpass@postgres:5432/chatdb
-      - CORS_ORIGIN=http://localhost:3000
+      - CORS_ORIGIN=*  # Allow all origins for LAN access
       - PORT=3001
     depends_on:
       postgres:
@@ -23,13 +23,12 @@ services:
       POSTGRES_DB: chatdb
       POSTGRES_USER: chatuser
       POSTGRES_PASSWORD: chatpass
-    ports:
-      - "5432:5432"
+    # No ports exposed - only accessible within Docker network
     volumes:
       - ./postgres_data:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
-    # networks:
-      # - chat-network
+    networks:
+      - chat-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U chatuser -d chatdb"]
       interval: 10s

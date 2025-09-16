@@ -1,68 +1,66 @@
 # Use Node.js 18 Alpine as base image
 FROM node:18-alpine AS base
+RUN apk add --no-cache libc6-compat
 
 # Install dependencies only when needed
 FROM base AS deps
-# Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine
-RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Install dependencies based on the preferred package manager
-COPY package.json yarn.lock* package-lock.json* pnpm-lock.yaml* ./
-RUN \
-  if [ -f yarn.lock ]; then yarn --frozen-lockfile; \
-  elif [ -f package-lock.json ]; then npm ci; \
-  elif [ -f pnpm-lock.yaml ]; then corepack enable pnpm && pnpm i --frozen-lockfile; \
-  else echo "Lockfile not found." && exit 1; \
-  fi
+# Copy package files and install all dependencies
+COPY package.json package-lock.json ./
+RUN npm ci
 
-
-# Rebuild the source code only when needed
+# Build the application
 FROM base AS builder
 WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+
+# Copy package files and install dependencies (including dev dependencies for build)
+COPY package.json package-lock.json ./
+RUN npm ci
+
+# Copy source code and build
 COPY . .
 
-# Next.js collects completely anonymous telemetry data about general usage.
-# Learn more here: https://nextjs.org/telemetry
-# Uncomment the following line in case you want to disable telemetry during the build.
+# Disable Next.js telemetry
 ENV NEXT_TELEMETRY_DISABLED 1
 
-RUN \
-  if [ -f yarn.lock ]; then yarn run build; \
-  elif [ -f package-lock.json ]; then npm run build; \
-  elif [ -f pnpm-lock.yaml ]; then corepack enable pnpm && pnpm run build; \
-  else echo "Lockfile not found." && exit 1; \
-  fi
+# Build the Next.js application
+RUN npm run build
 
-# Production image, copy all the files and run next
+# Production image - run the application
 FROM base AS runner
 WORKDIR /app
+RUN apk add --no-cache curl
 
 ENV NODE_ENV production
-# Uncomment the following line in case you want to disable telemetry during runtime.
 ENV NEXT_TELEMETRY_DISABLED 1
 
-# Create nextjs user
+# Create nextjs user for security
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-# Copy necessary files
+# Install only production dependencies
+COPY package.json package-lock.json ./
+RUN npm ci --only=production
+
+# Copy built application from builder stage
 COPY --from=builder /app/public ./public
 
-# Set the correct permission for prerender cache
+# Create .next directory and set permissions
 RUN mkdir .next
 RUN chown nextjs:nodejs .next
 
-# Automatically leverage output traces to reduce image size
-# https://nextjs.org/docs/advanced-features/output-file-tracing
+# Copy the built Next.js application
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+# Switch to non-root user
 USER nextjs
 
+# Expose port
 EXPOSE 3000
 
+# Set environment variables
 ENV PORT 3000
 ENV HOSTNAME "0.0.0.0"
 
@@ -70,4 +68,5 @@ ENV HOSTNAME "0.0.0.0"
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:3000/api/health || exit 1
 
+# Start the application
 CMD ["node", "server.js"]

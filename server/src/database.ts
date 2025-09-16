@@ -7,7 +7,7 @@ export class Database {
   constructor(connectionString: string) {
     this.pool = new Pool({
       connectionString,
-      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+      ssl: false, // Disable SSL for local development and Docker
       max: 20,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 2000,

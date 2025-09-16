@@ -109,7 +109,7 @@ app.get('/api/metadata', async (req, res) => {
     }
   } catch (error) {
     console.error('Error fetching URL metadata:', error);
-    res.status(500).json({ error: 'Failed to fetch metadata' });
+    return res.status(500).json({ error: 'Failed to fetch metadata' });
   }
 });
 
@@ -159,7 +159,7 @@ async function fetchUrlMetadata(url: string): Promise<any> {
 
       for (const pattern of patterns) {
         const match = html.match(pattern);
-        if (match) return match[1]?.trim();
+        if (match && match[1]) return match[1].trim();
       }
       return '';
     };
@@ -172,7 +172,7 @@ async function fetchUrlMetadata(url: string): Promise<any> {
     // Get favicon
     let favicon = '';
     const faviconMatch = html.match(/<link[^>]+rel=["'][^"']*icon[^"']*["'][^>]+href=["']([^"']+)["']/i);
-    if (faviconMatch) {
+    if (faviconMatch && faviconMatch[1]) {
       favicon = faviconMatch[1];
       if (favicon && !favicon.startsWith('http')) {
         favicon = new URL(favicon, cleanUrl).href;
@@ -347,7 +347,7 @@ process.on('SIGINT', async () => {
 });
 
 // Start server
-const PORT = process.env.PORT || 3001;
+const PORT = parseInt(process.env.PORT || '3001', 10);
 
 async function startServer() {
   try {

@@ -2,3 +2,4 @@
 **/node_modules
 client/.next
 **/postgres_data
+**/dist

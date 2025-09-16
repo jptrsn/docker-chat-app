@@ -132,7 +132,8 @@ export function useSocket(serverConfig: ServerConfig | null) {
     handler: ServerToClientEvents[T]
   ) => {
     if (socketRef.current) {
-      socketRef.current.on(event, handler)
+      // Use type assertion to handle the complex Socket.IO typing
+      socketRef.current.on(event, handler as any)
     }
   }
 
@@ -141,7 +142,8 @@ export function useSocket(serverConfig: ServerConfig | null) {
     handler?: ServerToClientEvents[T]
   ) => {
     if (socketRef.current) {
-      socketRef.current.off(event, handler)
+      // Use type assertion to handle the complex Socket.IO typing
+      socketRef.current.off(event, handler as any)
     }
   }
 

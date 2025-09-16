@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import type { Message, ServerConfig } from '@/types'
-import { linkify, formatTimestamp, getFirstUrl, containsUrls } from '@/utils'
+import { linkify, getFirstUrl, containsUrls } from '@/utils'
 import UrlPreview from './UrlPreview'
 
 interface ChatScreenProps {
