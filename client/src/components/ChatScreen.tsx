@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect } from 'react'
 import type { Message, ServerConfig } from '@/types'
+import { linkify, formatTimestamp, getFirstUrl, containsUrls } from '@/utils'
+import UrlPreview from './UrlPreview'
 
 interface ChatScreenProps {
   messages: Message[]
@@ -73,6 +75,11 @@ export default function ChatScreen({
       hour: '2-digit', 
       minute: '2-digit' 
     })
+  }
+
+  const renderMessageContent = (message: string) => {
+    const linkedContent = linkify(message)
+    return { __html: linkedContent }
   }
 
   const isOwnMessage = (username: string) => username === currentUsername
@@ -201,44 +208,62 @@ export default function ChatScreen({
             ref={messagesContainerRef}
             className="flex-1 overflow-y-auto scrollbar-custom p-4 space-y-4"
           >
-            {messages?.map((message, index) => (
-              <div
-                key={index}
-                className={`
-                  animate-message flex flex-col
-                  ${isOwnMessage(message.username) 
-                    ? 'items-end' 
-                    : isSystemMessage(message.username) 
-                      ? 'items-center' 
-                      : 'items-start'
-                  }
-                `}
-              >
-                {!isSystemMessage(message.username) && (
-                  <div className={`
-                    text-xs text-gray-500 mb-1 flex items-center space-x-2
-                    ${isOwnMessage(message.username) ? 'flex-row-reverse space-x-reverse' : ''}
-                  `}>
-                    <span className="font-medium">
-                      {isOwnMessage(message.username) ? 'You' : message.username}
-                    </span>
-                    <span>{formatTimestamp(message.timestamp)}</span>
-                  </div>
-                )}
+            {messages?.map((message, index) => {
+              const hasUrls = containsUrls(message.message)
+              const firstUrl = hasUrls ? getFirstUrl(message.message) : null
+              
+              return (
+                <div
+                  key={index}
+                  className={`
+                    animate-message flex flex-col
+                    ${isOwnMessage(message.username) 
+                      ? 'items-end' 
+                      : isSystemMessage(message.username) 
+                        ? 'items-center' 
+                        : 'items-start'
+                    }
+                  `}
+                >
+                  {!isSystemMessage(message.username) && (
+                    <div className={`
+                      text-xs text-gray-500 mb-1 flex items-center space-x-2
+                      ${isOwnMessage(message.username) ? 'flex-row-reverse space-x-reverse' : ''}
+                    `}>
+                      <span className="font-medium">
+                        {isOwnMessage(message.username) ? 'You' : message.username}
+                      </span>
+                      <span>{formatTimestamp(message.timestamp)}</span>
+                    </div>
+                  )}
 
-                <div className={`
-                  message-bubble
-                  ${isOwnMessage(message.username) 
-                    ? 'message-own' 
-                    : isSystemMessage(message.username) 
-                      ? 'message-system' 
-                      : 'message-other'
-                  }
-                `}>
-                  {message.message}
+                  <div className={`
+                    message-bubble
+                    ${isOwnMessage(message.username) 
+                      ? 'message-own' 
+                      : isSystemMessage(message.username) 
+                        ? 'message-system' 
+                        : 'message-other'
+                    }
+                  `}>
+                    <div 
+                      dangerouslySetInnerHTML={renderMessageContent(message.message)}
+                      className="break-words"
+                    />
+                  </div>
+
+                  {/* URL Preview - only show for non-system messages with URLs */}
+                  {!isSystemMessage(message.username) && firstUrl && (
+                    <div className={`
+                      ${isOwnMessage(message.username) ? 'self-end' : 'self-start'}
+                    `}>
+                      <UrlPreview url={firstUrl} />
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              )
+            })}
+
 
             {/* Typing Indicators */}
             {typingUsers && typingUsers.length > 0 && (

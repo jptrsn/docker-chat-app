@@ -90,12 +90,35 @@
     @apply bg-docker-blue text-white ml-auto;
   }
   
+  .message-own a {
+    @apply text-blue-200 hover:text-blue-100 underline;
+  }
+  
   .message-other {
     @apply bg-white text-gray-800;
   }
   
+  .message-other a {
+    @apply text-blue-600 hover:text-blue-800 underline;
+  }
+  
   .message-system {
     @apply bg-blue-50 text-blue-800 italic mx-auto text-center;
+  }
+  
+  .message-system a {
+    @apply text-blue-700 hover:text-blue-900 underline;
+  }
+
+  /* Link styling within messages */
+  .message-bubble a {
+    @apply font-medium transition-colors duration-200 break-all;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+  
+  .message-bubble a:hover {
+    @apply underline-offset-2;
   }
 }
 

@@ -1,17 +1,43 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { ServerConfig } from '@/types'
 
 interface ConfigScreenProps {
   onConfigSubmit: (config: ServerConfig) => void
+  initialConfig?: ServerConfig | null
 }
 
-export default function ConfigScreen({ onConfigSubmit }: ConfigScreenProps) {
-  const [url, setUrl] = useState('http://localhost')
-  const [port, setPort] = useState('3001')
+export default function ConfigScreen({ onConfigSubmit, initialConfig }: ConfigScreenProps) {
+  // Use initial config or detect from current location
+  const getInitialValues = () => {
+    if (initialConfig) {
+      return {
+        url: initialConfig.url,
+        port: initialConfig.port.toString()
+      }
+    }
+    
+    // Only use hardcoded fallbacks if no initial config provided
+    return {
+      url: 'http://localhost',
+      port: '3001'
+    }
+  }
+
+  const initialValues = getInitialValues()
+  const [url, setUrl] = useState(initialValues.url)
+  const [port, setPort] = useState(initialValues.port)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [currentPageHost, setCurrentPageHost] = useState('N/A')
+
+  // Set current page host after component mounts to avoid hydration mismatch
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setCurrentPageHost(window.location.host)
+    }
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -100,6 +126,14 @@ export default function ConfigScreen({ onConfigSubmit }: ConfigScreenProps) {
           </div>
           <h1 className="text-3xl font-bold text-gray-800 mb-2">Docker Chat</h1>
           <p className="text-gray-600">Configure your chat server connection</p>
+          {initialConfig && (
+            <div className="mt-3 p-2 bg-green-50 border border-green-200 rounded-lg">
+              <p className="text-sm text-green-700 flex items-center justify-center">
+                <i className="fas fa-magic mr-2"></i>
+                Auto-detected from your current location
+              </p>
+            </div>
+          )}
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -183,9 +217,10 @@ export default function ConfigScreen({ onConfigSubmit }: ConfigScreenProps) {
             Quick Setup
           </h3>
           <ul className="text-xs text-blue-700 space-y-1">
+            <li>• Current page: {currentPageHost}</li>
+            <li>• Auto-detected: {initialConfig ? `${initialConfig.url}:${initialConfig.port}` : 'None'}</li>
             <li>• For local development: http://localhost:3001</li>
             <li>• For Docker containers: http://chat-server:3001</li>
-            <li>• For network access: http://[server-ip]:3001</li>
           </ul>
         </div>
       </div>

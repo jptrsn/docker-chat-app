@@ -36,6 +36,7 @@ export default function Home() {
   // Check for environment variable configuration on mount
   useEffect(() => {
     const envServerUrl = process.env.NEXT_PUBLIC_SERVER_URL
+    
     if (envServerUrl) {
       try {
         const url = new URL(envServerUrl)
@@ -50,10 +51,38 @@ export default function Home() {
           isConfigured: true 
         }))
         setCurrentScreen('login')
+        return // Exit early if env var is set
       } catch (error) {
         console.error('Invalid NEXT_PUBLIC_SERVER_URL:', error)
-        // Stay on config screen
+        // Fall through to auto-detect based on current host
       }
+    }
+    
+    // If no environment variable, auto-detect server URL based on current host
+    if (typeof window !== 'undefined') {
+      const currentHost = window.location.hostname
+      const currentProtocol = window.location.protocol
+      
+      // Server URL should match the client's hostname (without port)
+      const serverUrl = `${currentProtocol}//${currentHost}`
+      
+      // Default server port is 3001
+      const serverPort = 3001
+      
+      const autoDetectedConfig: ServerConfig = {
+        url: serverUrl,
+        port: serverPort
+      }
+      
+      console.log('Auto-detected server config:', autoDetectedConfig)
+      
+      // Set the auto-detected config but don't mark as configured
+      // This will pre-fill the form but still show the config screen
+      setChatState(prev => ({ 
+        ...prev, 
+        serverConfig: autoDetectedConfig,
+        isConfigured: false // Still show config screen for user to confirm
+      }))
     }
   }, [])
 
@@ -328,7 +357,10 @@ export default function Home() {
 
       {/* Screens */}
       {currentScreen === 'config' && (
-        <ConfigScreen onConfigSubmit={handleConfigSubmit} />
+        <ConfigScreen 
+          onConfigSubmit={handleConfigSubmit} 
+          initialConfig={chatState.serverConfig}
+        />
       )}
 
       {currentScreen === 'login' && (
