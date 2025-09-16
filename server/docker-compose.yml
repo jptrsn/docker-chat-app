@@ -1,22 +1,24 @@
 services:
-  # chat-server:
-  #   build: .
-  #   ports:
-  #     - "3001:3001"
-  #   environment:
-  #     - NODE_ENV=production
-  #     - DATABASE_URL=postgresql://chatuser:chatpass@postgres:5432/chatdb
-  #     - CORS_ORIGIN=http://localhost:3000
-  #     - PORT=3001
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #   networks:
-  #     - chat-network
-  #   restart: unless-stopped
+  chat-server:
+    container_name: chat-server
+    build: .
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://chatuser:chatpass@postgres:5432/chatdb
+      - CORS_ORIGIN=http://localhost:3000
+      - PORT=3001
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - chat-network
+    restart: unless-stopped
 
   postgres:
     image: postgres:15-alpine
+    container_name: postgres
     environment:
       POSTGRES_DB: chatdb
       POSTGRES_USER: chatuser

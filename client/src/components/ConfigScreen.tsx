@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import type { ServerConfig } from '@/types'
 
 interface ConfigScreenProps {
@@ -18,7 +18,7 @@ export default function ConfigScreen({ onConfigSubmit, initialConfig }: ConfigSc
       }
     }
     
-    // Only use hardcoded fallbacks if no initial config provided
+    // Fallback defaults
     return {
       url: 'http://localhost',
       port: '3001'
@@ -30,14 +30,6 @@ export default function ConfigScreen({ onConfigSubmit, initialConfig }: ConfigSc
   const [port, setPort] = useState(initialValues.port)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
-  const [currentPageHost, setCurrentPageHost] = useState('N/A')
-
-  // Set current page host after component mounts to avoid hydration mismatch
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setCurrentPageHost(window.location.host)
-    }
-  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -217,7 +209,7 @@ export default function ConfigScreen({ onConfigSubmit, initialConfig }: ConfigSc
             Quick Setup
           </h3>
           <ul className="text-xs text-blue-700 space-y-1">
-            <li>• Current page: {currentPageHost}</li>
+            <li>• Current page: {typeof window !== 'undefined' ? window.location.host : 'N/A'}</li>
             <li>• Auto-detected: {initialConfig ? `${initialConfig.url}:${initialConfig.port}` : 'None'}</li>
             <li>• For local development: http://localhost:3001</li>
             <li>• For Docker containers: http://chat-server:3001</li>

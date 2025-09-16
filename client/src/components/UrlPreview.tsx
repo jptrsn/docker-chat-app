@@ -14,9 +14,10 @@ interface UrlMetadata {
 interface UrlPreviewProps {
   url: string
   className?: string
+  serverUrl?: string // Add server URL prop
 }
 
-export default function UrlPreview({ url, className = '' }: UrlPreviewProps) {
+export default function UrlPreview({ url, className = '', serverUrl }: UrlPreviewProps) {
   const [metadata, setMetadata] = useState<UrlMetadata | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(false)
@@ -39,102 +40,43 @@ export default function UrlPreview({ url, className = '' }: UrlPreviewProps) {
         }
 
         // Validate URL format
-        const urlObj = new URL(cleanUrl)
+        new URL(cleanUrl)
         
-        // Try multiple CORS proxy services as fallbacks
-        const proxyServices = [
-          `https://api.allorigins.win/get?url=${encodeURIComponent(cleanUrl)}`,
-          `https://corsproxy.io/?${encodeURIComponent(cleanUrl)}`,
-          `https://cors-anywhere.herokuapp.com/${cleanUrl}`
-        ]
+        // Use server endpoint for metadata
+        const metadataUrl = serverUrl 
+          ? `${serverUrl}/api/metadata?url=${encodeURIComponent(cleanUrl)}`
+          : `/api/metadata?url=${encodeURIComponent(cleanUrl)}`
 
-        let response: Response | null = null
-        let htmlContent = ''
+        console.log(`🔍 Fetching metadata from server: ${metadataUrl}`)
+        
+        const response = await fetch(metadataUrl, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+          },
+          signal: AbortSignal.timeout(15000) // 15 second timeout
+        })
 
-        // Try each proxy service
-        for (const proxyUrl of proxyServices) {
-          try {
-            console.log(`Trying proxy: ${proxyUrl}`)
-            response = await fetch(proxyUrl, {
-              method: 'GET',
-              headers: {
-                'Accept': 'application/json',
-                'User-Agent': 'Mozilla/5.0 (compatible; ChatBot/1.0)',
-              },
-              signal: AbortSignal.timeout(10000) // 10 second timeout
-            })
-
-            if (!response.ok) {
-              throw new Error(`HTTP ${response.status}`)
-            }
-
-            // Handle different proxy response formats
-            if (proxyUrl.includes('allorigins.win')) {
-              const data = await response.json()
-              htmlContent = data.contents
-            } else if (proxyUrl.includes('corsproxy.io')) {
-              htmlContent = await response.text()
-            } else {
-              htmlContent = await response.text()
-            }
-
-            if (htmlContent) {
-              console.log(`Successfully fetched metadata using: ${proxyUrl}`)
-              break
-            }
-          } catch (proxyError) {
-            console.warn(`Proxy ${proxyUrl} failed:`, proxyError)
-            continue
+        if (!response.ok) {
+          if (response.status === 404) {
+            console.log('No metadata available for URL:', cleanUrl)
+            setError(true)
+            return
           }
+          throw new Error(`HTTP ${response.status}`)
         }
 
-        if (!htmlContent) {
-          throw new Error('All proxy services failed')
-        }
-
-        // Parse HTML to extract metadata
-        const parser = new DOMParser()
-        const doc = parser.parseFromString(htmlContent, 'text/html')
-
-        const getMetaContent = (name: string, property: string = name) => {
-          // Try property first (for og: tags), then name
-          let element = doc.querySelector(`meta[property="${property}"]`) ||
-                       doc.querySelector(`meta[name="${name}"]`)
-          return element?.getAttribute('content') || ''
-        }
-
-        const title = getMetaContent('title', 'og:title') || 
-                     doc.querySelector('title')?.textContent || ''
+        const metadata = await response.json()
         
-        const description = getMetaContent('description', 'og:description') ||
-                           getMetaContent('description') || ''
-        
-        const image = getMetaContent('image', 'og:image') ||
-                     getMetaContent('twitter:image') || ''
-        
-        const siteName = getMetaContent('site_name', 'og:site_name') ||
-                        getMetaContent('twitter:site') ||
-                        urlObj.hostname || ''
-
-        // Get favicon
-        let favicon = ''
-        const iconLink = doc.querySelector('link[rel*="icon"]')
-        if (iconLink) {
-          favicon = iconLink.getAttribute('href') || ''
-          if (favicon && !favicon.startsWith('http')) {
-            favicon = new URL(favicon, cleanUrl).href
-          }
-        }
-
-        // Only set metadata if we have at least a title or description
-        if (title.trim() || description.trim()) {
+        if (metadata && (metadata.title || metadata.description)) {
+          console.log('✅ Metadata retrieved successfully')
           setMetadata({
-            title: title.trim(),
-            description: description.trim(),
-            image: image.trim(),
-            siteName: siteName.trim(),
-            url: cleanUrl,
-            favicon: favicon.trim()
+            title: metadata.title?.trim() || '',
+            description: metadata.description?.trim() || '',
+            image: metadata.image?.trim() || '',
+            siteName: metadata.siteName?.trim() || '',
+            url: metadata.url || cleanUrl,
+            favicon: metadata.favicon?.trim() || ''
           })
         } else {
           setError(true)
@@ -146,7 +88,6 @@ export default function UrlPreview({ url, className = '' }: UrlPreviewProps) {
         if (err instanceof Error) {
           if (err.message.includes('Failed to fetch') || 
               err.message.includes('Network Error') ||
-              err.message.includes('All proxy services failed') ||
               err.name === 'TypeError') {
             setNetworkError(true)
             console.warn('Network error detected, URL previews may not work from this network location')

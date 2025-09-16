@@ -32,14 +32,31 @@ CREATE TABLE IF NOT EXISTS messages (
     room VARCHAR(50) DEFAULT 'general'
 );
 
--- Grant permissions on table and sequence to chatuser
+-- Create URL metadata table for link previews
+CREATE TABLE IF NOT EXISTS url_metadata (
+    id SERIAL PRIMARY KEY,
+    url VARCHAR(2048) UNIQUE NOT NULL,
+    title TEXT,
+    description TEXT,
+    image TEXT,
+    site_name VARCHAR(255),
+    favicon TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Grant permissions on tables and sequences to chatuser
 GRANT ALL PRIVILEGES ON TABLE messages TO chatuser;
 GRANT ALL PRIVILEGES ON SEQUENCE messages_id_seq TO chatuser;
+GRANT ALL PRIVILEGES ON TABLE url_metadata TO chatuser;
+GRANT ALL PRIVILEGES ON SEQUENCE url_metadata_id_seq TO chatuser;
 
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON messages(timestamp);
 CREATE INDEX IF NOT EXISTS idx_messages_room ON messages(room);
 CREATE INDEX IF NOT EXISTS idx_messages_username ON messages(username);
+CREATE INDEX IF NOT EXISTS idx_url_metadata_url ON url_metadata(url);
+CREATE INDEX IF NOT EXISTS idx_url_metadata_created_at ON url_metadata(created_at);
 
 -- Insert welcome message if it doesn't exist
 INSERT INTO messages (username, message, room) 

@@ -65,6 +65,141 @@ app.get('/api/messages', async (req, res) => {
   }
 });
 
+// Get URL metadata endpoint
+app.get('/api/metadata', async (req, res) => {
+  const { url } = req.query;
+
+  if (!url || typeof url !== 'string') {
+    return res.status(400).json({ error: 'URL parameter is required' });
+  }
+
+  try {
+    // Check if we have cached metadata
+    const cachedMetadata = await db.getUrlMetadata(url);
+    
+    if (cachedMetadata) {
+      // Check if cache is still fresh (24 hours)
+      const cacheAge = Date.now() - new Date(cachedMetadata.updated_at).getTime();
+      const maxAge = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+      
+      if (cacheAge < maxAge) {
+        console.log('📋 Serving cached metadata for:', url);
+        return res.json({
+          title: cachedMetadata.title,
+          description: cachedMetadata.description,
+          image: cachedMetadata.image,
+          siteName: cachedMetadata.site_name,
+          favicon: cachedMetadata.favicon,
+          url: cachedMetadata.url
+        });
+      }
+    }
+
+    // Fetch fresh metadata
+    console.log('🌐 Fetching fresh metadata for:', url);
+    const metadata = await fetchUrlMetadata(url);
+    
+    if (metadata) {
+      // Save to database
+      await db.saveUrlMetadata(metadata);
+      
+      return res.json(metadata);
+    } else {
+      return res.status(404).json({ error: 'Could not fetch metadata' });
+    }
+  } catch (error) {
+    console.error('Error fetching URL metadata:', error);
+    res.status(500).json({ error: 'Failed to fetch metadata' });
+  }
+});
+
+// URL metadata fetching function
+async function fetchUrlMetadata(url: string): Promise<any> {
+  try {
+    // Clean URL
+    let cleanUrl = url.trim();
+    if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+      cleanUrl = 'https://' + cleanUrl;
+    }
+
+    const urlObj = new URL(cleanUrl);
+
+    // Fetch the page
+    const response = await fetch(cleanUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; Docker Chat Bot/1.0)',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      },
+      signal: AbortSignal.timeout(10000), // 10 second timeout
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const html = await response.text();
+
+    // Parse HTML
+    const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+    const title = titleMatch?.[1]?.trim() || '';
+
+    // OpenGraph and meta tags
+    const getMetaContent = (property: string, name?: string) => {
+      const patterns = [
+        new RegExp(`<meta[^>]+property=["']${property}["'][^>]+content=["']([^"']+)["']`, 'i'),
+        new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+property=["']${property}["']`, 'i'),
+      ];
+      
+      if (name) {
+        patterns.push(
+          new RegExp(`<meta[^>]+name=["']${name}["'][^>]+content=["']([^"']+)["']`, 'i'),
+          new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+name=["']${name}["']`, 'i')
+        );
+      }
+
+      for (const pattern of patterns) {
+        const match = html.match(pattern);
+        if (match) return match[1].trim();
+      }
+      return '';
+    };
+
+    const ogTitle = getMetaContent('og:title');
+    const ogDescription = getMetaContent('og:description', 'description');
+    const ogImage = getMetaContent('og:image', 'twitter:image');
+    const ogSiteName = getMetaContent('og:site_name', 'twitter:site');
+
+    // Get favicon
+    let favicon = '';
+    const faviconMatch = html.match(/<link[^>]+rel=["'][^"']*icon[^"']*["'][^>]+href=["']([^"']+)["']/i);
+    if (faviconMatch) {
+      favicon = faviconMatch[1];
+      if (favicon && !favicon.startsWith('http')) {
+        favicon = new URL(favicon, cleanUrl).href;
+      }
+    }
+
+    const metadata = {
+      url: cleanUrl,
+      title: ogTitle || title,
+      description: ogDescription,
+      image: ogImage,
+      siteName: ogSiteName || urlObj.hostname,
+      favicon: favicon
+    };
+
+    // Only return if we have meaningful content
+    if (metadata.title || metadata.description) {
+      return metadata;
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Error fetching metadata:', error);
+    return null;
+  }
+}
+
 // Socket.IO connection handling
 io.on('connection', (socket) => {
   console.log(`🔗 User connected: ${socket.id}`);

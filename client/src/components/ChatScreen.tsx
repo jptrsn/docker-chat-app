@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import type { Message, ServerConfig } from '@/types'
-import { linkify, formatTimestamp, getFirstUrl, containsUrls } from '@/utils'
+import { linkify, getFirstUrl, containsUrls } from '@/utils'
 import UrlPreview from './UrlPreview'
 
 interface ChatScreenProps {
@@ -257,7 +257,10 @@ export default function ChatScreen({
                     <div className={`
                       ${isOwnMessage(message.username) ? 'self-end' : 'self-start'}
                     `}>
-                      <UrlPreview url={firstUrl} />
+                      <UrlPreview 
+                        url={firstUrl} 
+                        serverUrl={serverConfig ? `${serverConfig.url}:${serverConfig.port}` : undefined}
+                      />
                     </div>
                   )}
                 </div>

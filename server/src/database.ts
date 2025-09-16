@@ -50,6 +50,29 @@ export class Database {
         CREATE INDEX IF NOT EXISTS idx_messages_room ON messages(room);
       `);
 
+      // Create URL metadata table
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS url_metadata (
+          id SERIAL PRIMARY KEY,
+          url VARCHAR(2048) UNIQUE NOT NULL,
+          title TEXT,
+          description TEXT,
+          image TEXT,
+          site_name VARCHAR(255),
+          favicon TEXT,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      await client.query(`
+        CREATE INDEX IF NOT EXISTS idx_url_metadata_url ON url_metadata(url);
+      `);
+
+      await client.query(`
+        CREATE INDEX IF NOT EXISTS idx_url_metadata_created_at ON url_metadata(created_at);
+      `);
+
       // Insert welcome message if it doesn't exist
       const welcomeCheck = await client.query(
         `SELECT 1 FROM messages WHERE username = 'System' AND message LIKE '%Welcome to the Docker Bootcamp%'`
@@ -124,6 +147,61 @@ export class Database {
       return result.rows;
     } catch (error) {
       console.error('Error fetching recent messages:', error);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async getUrlMetadata(url: string): Promise<any> {
+    const client: PoolClient = await this.pool.connect();
+    try {
+      const result = await client.query(
+        `SELECT * FROM url_metadata WHERE url = $1`,
+        [url]
+      );
+
+      return result.rows[0] || null;
+    } catch (error) {
+      console.error('Error fetching URL metadata:', error);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async saveUrlMetadata(metadata: {
+    url: string;
+    title?: string;
+    description?: string;
+    image?: string;
+    siteName?: string;
+    favicon?: string;
+  }): Promise<void> {
+    const client: PoolClient = await this.pool.connect();
+    try {
+      await client.query(
+        `INSERT INTO url_metadata (url, title, description, image, site_name, favicon, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
+         ON CONFLICT (url) 
+         DO UPDATE SET 
+           title = EXCLUDED.title,
+           description = EXCLUDED.description,
+           image = EXCLUDED.image,
+           site_name = EXCLUDED.site_name,
+           favicon = EXCLUDED.favicon,
+           updated_at = CURRENT_TIMESTAMP`,
+        [
+          metadata.url,
+          metadata.title || null,
+          metadata.description || null,
+          metadata.image || null,
+          metadata.siteName || null,
+          metadata.favicon || null
+        ]
+      );
+    } catch (error) {
+      console.error('Error saving URL metadata:', error);
       throw error;
     } finally {
       client.release();
