@@ -1,0 +1,67 @@
+services:
+  chat-client:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_SERVER_URL=http://localhost:3001
+      - PORT=3000
+      - HOSTNAME=0.0.0.0
+    networks:
+      - chat-client-network
+    restart: unless-stopped
+    depends_on:
+      - chat-server
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Include chat server for full-stack development
+  chat-server:
+    image: chat-server:latest  # Assumes server image is built
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://chatuser:chatpass@postgres:5432/chatdb
+      - CORS_ORIGIN=http://localhost:3000
+      - PORT=3001
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - chat-client-network
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: chatdb
+      POSTGRES_USER: chatuser
+      POSTGRES_PASSWORD: chatpass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../server/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - chat-client-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chatuser -d chatdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  chat-client-network:
+    driver: bridge

@@ -1,0 +1,35 @@
+{
+  "name": "docker-chat-client",
+  "version": "1.0.0",
+  "description": "Next.js 15 TypeScript chat client for Docker bootcamp",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "next": "^15.0.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "socket.io-client": "^4.7.2",
+    "@types/node": "^20.5.0",
+    "@types/react": "^18.2.21",
+    "@types/react-dom": "^18.2.7",
+    "typescript": "^5.1.6",
+    "tailwindcss": "^3.3.3",
+    "autoprefixer": "^10.4.15",
+    "postcss": "^8.4.28",
+    "clsx": "^2.0.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.47.0",
+    "eslint-config-next": "^15.0.0",
+    "@tailwindcss/forms": "^0.5.4"
+  },
+  "keywords": ["docker", "chat", "nextjs", "typescript", "socket.io"],
+  "author": "Docker Bootcamp",
+  "license": "MIT"
+}
