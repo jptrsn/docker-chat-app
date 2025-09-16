@@ -1,34 +1,77 @@
+# Full-stack Docker Bootcamp Chat Application
+# This compose file runs both the client and server together
+
 services:
-  web:
-    build: .
+  # Chat Server (Node.js + TypeScript + Socket.IO)
+  chat-server:
+    build: ./server
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://chatuser:chatpass@postgres:5432/chatdb
+      - CORS_ORIGIN=http://localhost:3000
+      - PORT=3001
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - chat-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/api/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Chat Client (Next.js 15 + TypeScript)
+  chat-client:
+    build: ./client
     ports:
       - "3000:3000"
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=${DATABASE_URL}
+      - NEXT_PUBLIC_SERVER_URL=http://localhost:3001
+      - PORT=3000
+      - HOSTNAME=0.0.0.0
     depends_on:
-      db:
+      chat-server:
         condition: service_healthy
-    volumes:
-      - .:/app
-      - /app/node_modules
+    networks:
+      - chat-network
+    restart: unless-stopped
 
-  db:
+  # PostgreSQL Database
+  postgres:
     image: postgres:15-alpine
     environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: chatdb
+      POSTGRES_USER: chatuser
+      POSTGRES_PASSWORD: chatpass
     ports:
-      - "5342:5432"
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./server/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - chat-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U chatuser -d chatdb"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
+    restart: unless-stopped
 
 volumes:
   postgres_data:
+    driver: local
+    labels:
+      - "com.docker.compose.project=docker-bootcamp-chat"
+
+networks:
+  chat-network:
+    driver: bridge
+    labels:
+      - "com.docker.compose.project=docker-bootcamp-chat"

@@ -1,0 +1,159 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom scrollbar styles */
+@layer utilities {
+  .scrollbar-custom {
+    scrollbar-width: thin;
+    scrollbar-color: #c1c1c1 #f1f1f1;
+  }
+  
+  .scrollbar-custom::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  .scrollbar-custom::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+  }
+  
+  .scrollbar-custom::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+  }
+  
+  .scrollbar-custom::-webkit-scrollbar-thumb:hover {
+    background: #a1a1a1;
+  }
+}
+
+/* Base styles */
+@layer base {
+  html {
+    height: 100%;
+  }
+  
+  body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    overflow: hidden;
+  }
+  
+  #root {
+    height: 100vh;
+    width: 100vw;
+  }
+}
+
+/* Component styles */
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  
+  .btn-primary {
+    @apply bg-docker-blue text-white hover:bg-docker-darkblue focus:ring-docker-blue hover:shadow-lg hover:-translate-y-0.5;
+  }
+  
+  .btn-secondary {
+    @apply bg-gray-600 text-white hover:bg-gray-700 focus:ring-gray-500;
+  }
+  
+  .input-field {
+    @apply w-full px-4 py-3 border-2 border-gray-200 rounded-lg text-base transition-all duration-200 focus:outline-none focus:border-docker-blue focus:ring-2 focus:ring-docker-blue/20 bg-white;
+  }
+  
+  .input-group {
+    @apply relative;
+  }
+  
+  .input-icon {
+    @apply absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400;
+  }
+  
+  .input-with-icon {
+    @apply pl-12;
+  }
+  
+  .card {
+    @apply bg-white rounded-2xl shadow-lg backdrop-blur-sm;
+  }
+  
+  .message-bubble {
+    @apply max-w-xs md:max-w-md lg:max-w-lg xl:max-w-xl p-3 rounded-2xl shadow-sm break-words;
+  }
+  
+  .message-own {
+    @apply bg-docker-blue text-white ml-auto;
+  }
+  
+  .message-own a {
+    @apply text-blue-200 hover:text-blue-100 underline;
+  }
+  
+  .message-other {
+    @apply bg-white text-gray-800;
+  }
+  
+  .message-other a {
+    @apply text-blue-600 hover:text-blue-800 underline;
+  }
+  
+  .message-system {
+    @apply bg-blue-50 text-blue-800 italic mx-auto text-center;
+  }
+  
+  .message-system a {
+    @apply text-blue-700 hover:text-blue-900 underline;
+  }
+
+  /* Link styling within messages */
+  .message-bubble a {
+    @apply font-medium transition-colors duration-200 break-all;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+  
+  .message-bubble a:hover {
+    @apply underline-offset-2;
+  }
+}
+
+/* Animation classes */
+@layer utilities {
+  .animate-message {
+    animation: fadeIn 0.3s ease-out;
+  }
+  
+  .animate-typing {
+    animation: pulse 1s infinite;
+  }
+  
+  .animate-connect {
+    animation: bounceGentle 0.6s ease-in-out;
+  }
+}
+
+/* Dark mode support (future enhancement) */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-primary: #1a1a1a;
+    --bg-secondary: #2d2d2d;
+    --text-primary: #ffffff;
+    --text-secondary: #cccccc;
+  }
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  .mobile-full-height {
+    height: 100dvh; /* Use dynamic viewport height on mobile */
+  }
+  
+  .mobile-safe-area {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
