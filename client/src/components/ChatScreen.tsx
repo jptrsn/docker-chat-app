@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import type { Message, ServerConfig } from '@/types'
-import { linkify, getFirstUrl, containsUrls } from '@/utils'
+import { linkify, formatTimestamp, getFirstUrl, containsUrls } from '@/utils'
 import UrlPreview from './UrlPreview'
 
 interface ChatScreenProps {
@@ -98,9 +98,13 @@ export default function ChatScreen({
           </button>
           
           <div className="flex items-center space-x-3">
-            <i className="fab fa-docker text-docker-blue text-2xl"></i>
+            <img 
+              src="/logo.svg" 
+              alt="Bootcamp Logo" 
+              className="w-8 h-8"
+            />
             <div>
-              <h1 className="font-bold text-lg text-gray-800">Docker Bootcamp</h1>
+              <h1 className="font-bold text-lg text-gray-800">Bootcamp Chat</h1>
               <div className="flex items-center space-x-2 text-sm text-gray-500">
                 <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">
                   #general

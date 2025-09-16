@@ -56,7 +56,11 @@ export default function LoginScreen({
       <div className="card w-full max-w-md p-8 animate-fade-in">
         <div className="text-center mb-8">
           <div className="text-6xl mb-4 animate-bounce-gentle">
-            <i className="fab fa-docker text-docker-blue"></i>
+            <img 
+              src="/logo.svg" 
+              alt="Bootcamp Logo" 
+              className="w-16 h-16 mx-auto"
+            />
           </div>
           <h1 className="text-3xl font-bold text-gray-800 mb-2">Join the Chat</h1>
           <p className="text-gray-600">Enter your username to start chatting</p>

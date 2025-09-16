@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { ServerConfig } from '@/types'
 
 interface ConfigScreenProps {
@@ -9,27 +9,27 @@ interface ConfigScreenProps {
 }
 
 export default function ConfigScreen({ onConfigSubmit, initialConfig }: ConfigScreenProps) {
-  // Use initial config or detect from current location
-  const getInitialValues = () => {
-    if (initialConfig) {
-      return {
-        url: initialConfig.url,
-        port: initialConfig.port.toString()
-      }
-    }
-    
-    // Fallback defaults
-    return {
-      url: 'http://localhost',
-      port: '3001'
-    }
-  }
-
-  const initialValues = getInitialValues()
-  const [url, setUrl] = useState(initialValues.url)
-  const [port, setPort] = useState(initialValues.port)
+  // Use initial config values directly if provided, otherwise use defaults
+  const [url, setUrl] = useState(initialConfig?.url || 'http://localhost')
+  const [port, setPort] = useState(initialConfig?.port?.toString() || '3001')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [currentPageHost, setCurrentPageHost] = useState('N/A')
+
+  // Set current page host after component mounts to avoid hydration mismatch
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setCurrentPageHost(window.location.host)
+    }
+  }, [])
+
+  // Update form values when initialConfig changes
+  useEffect(() => {
+    if (initialConfig) {
+      setUrl(initialConfig.url)
+      setPort(initialConfig.port.toString())
+    }
+  }, [initialConfig])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -114,9 +114,13 @@ export default function ConfigScreen({ onConfigSubmit, initialConfig }: ConfigSc
       <div className="card w-full max-w-md p-8 animate-fade-in">
         <div className="text-center mb-8">
           <div className="text-6xl mb-4">
-            <i className="fab fa-docker text-docker-blue"></i>
+            <img 
+              src="/logo.svg" 
+              alt="Bootcamp Logo" 
+              className="w-16 h-16 mx-auto"
+            />
           </div>
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">Docker Chat</h1>
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">Bootcamp Chat</h1>
           <p className="text-gray-600">Configure your chat server connection</p>
           {initialConfig && (
             <div className="mt-3 p-2 bg-green-50 border border-green-200 rounded-lg">
@@ -209,7 +213,7 @@ export default function ConfigScreen({ onConfigSubmit, initialConfig }: ConfigSc
             Quick Setup
           </h3>
           <ul className="text-xs text-blue-700 space-y-1">
-            <li>• Current page: {typeof window !== 'undefined' ? window.location.host : 'N/A'}</li>
+            <li>• Current page: {currentPageHost}</li>
             <li>• Auto-detected: {initialConfig ? `${initialConfig.url}:${initialConfig.port}` : 'None'}</li>
             <li>• For local development: http://localhost:3001</li>
             <li>• For Docker containers: http://chat-server:3001</li>

@@ -159,7 +159,7 @@ async function fetchUrlMetadata(url: string): Promise<any> {
 
       for (const pattern of patterns) {
         const match = html.match(pattern);
-        if (match) return match[1].trim();
+        if (match) return match[1]?.trim();
       }
       return '';
     };
