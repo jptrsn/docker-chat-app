@@ -33,16 +33,17 @@ export function useSocket(serverConfig: ServerConfig | null) {
     let serverUrl = serverConfig.url
     let socketPath = '/socket.io/'
     
-    // For production with reverse proxy, we connect to the same domain
-    // but the socket.io path is proxied to the backend
-    if (serverUrl.includes('opensourceteacher.ca') || serverUrl.startsWith('https://')) {
+    // For HTTPS production, always use the same domain with default socket.io path
+    if (serverUrl.startsWith('https://')) {
       // Production setup - use same domain, default socket.io path
       socketPath = '/socket.io/'
+      console.log('🔌 Production HTTPS connection mode')
     } else {
       // Development setup - direct connection to backend
       if (serverConfig.port && serverConfig.port !== 443 && serverConfig.port !== 80) {
         serverUrl = `${serverUrl}:${serverConfig.port}`
       }
+      console.log('🔌 Development connection mode')
     }
 
     console.log('🔌 Connecting to:', serverUrl)
@@ -51,24 +52,30 @@ export function useSocket(serverConfig: ServerConfig | null) {
     try {
       const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(serverUrl, {
         path: socketPath,
-        // Force WebSocket transport first in production, polling first for development
+        // Force secure transports for HTTPS
         transports: serverUrl.startsWith('https://') 
           ? ['websocket', 'polling'] 
           : ['polling', 'websocket'],
-        timeout: 15000, // Increased timeout for HTTPS
+        timeout: 15000,
         reconnection: true,
         reconnectionDelay: 1000,
         reconnectionAttempts: 5,
         forceNew: true,
-        // Automatically determine secure connection
+        // Force secure connection for HTTPS
         secure: serverUrl.startsWith('https://'),
-        // Additional options for reverse proxy setup
+        // Additional options for production
         upgrade: true,
         rememberUpgrade: false,
         // CORS handling
         withCredentials: false,
-        // Polling options for fallback
-        autoConnect: true
+        // Force HTTPS for production
+        forceBase64: false,
+        autoConnect: true,
+        // Add query parameters to help with debugging
+        query: {
+          clientVersion: '1.0.0',
+          transport: serverUrl.startsWith('https://') ? 'secure' : 'insecure'
+        }
       })
 
       socketRef.current = socket
@@ -77,9 +84,13 @@ export function useSocket(serverConfig: ServerConfig | null) {
       socket.on('connect', () => {
         console.log('✅ Connected to socket server:', socket.id)
         console.log('🚀 Transport:', socket.io.engine.transport.name)
+        const isSecure = socket.io.engine.transport.name === 'websocket' ? 
+          serverUrl.startsWith('https://') : 
+          (socket.io.engine as any).socket?.secure || serverUrl.startsWith('https://')
+        console.log('🔒 Secure:', isSecure)
         setConnectionStatus({
           status: 'connected',
-          message: `Connected via ${socket.io.engine.transport.name}`
+          message: `Connected via ${socket.io.engine.transport.name} (${isSecure ? 'secure' : 'insecure'})`
         })
       })
 
@@ -94,6 +105,8 @@ export function useSocket(serverConfig: ServerConfig | null) {
           errorMessage = 'Connection refused - check server status'
         } else if (error.message.includes('Transport')) {
           errorMessage = 'Transport error - trying fallback connection method'
+        } else if (error.message.includes('xhr poll error') || error.message.includes('websocket error')) {
+          errorMessage = 'Network connectivity issue - check HTTPS/SSL configuration'
         } else {
           errorMessage = `Connection error: ${error.message}`
         }
@@ -149,9 +162,12 @@ export function useSocket(serverConfig: ServerConfig | null) {
       // Transport change logging - use engine events
       socket.io.engine.on('upgrade', () => {
         console.log('⬆️ Upgraded to:', socket.io.engine.transport.name)
+        const isSecure = socket.io.engine.transport.name === 'websocket' ? 
+          serverUrl.startsWith('https://') : 
+          (socket.io.engine as any).socket?.secure || serverUrl.startsWith('https://')
         setConnectionStatus(prev => ({
           ...prev,
-          message: `Connected via ${socket.io.engine.transport.name}`
+          message: `Connected via ${socket.io.engine.transport.name} (${isSecure ? 'secure' : 'insecure'})`
         }))
       })
 

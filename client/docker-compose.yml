@@ -4,11 +4,11 @@ services:
     build: .
     environment:
       - NODE_ENV=production
-      - NEXT_PUBLIC_SERVER_URL=https://opensourceteacher.ca
+      - NEXT_PUBLIC_SERVER_URL=${NEXT_PUBLIC_SERVER_URL}
       - PORT=3000
       - HOSTNAME=0.0.0.0
-    # ports:
-    #   - "3000:3000"
+    ports:
+      - "3000:3000"
     networks:
       - chat-client-network
       - proxy
@@ -16,7 +16,7 @@ services:
     labels:
       - "traefik.enable=true"
       # Main application route (naked domain)
-      - "traefik.http.routers.chat-client.rule=Host(`opensourceteacher.ca`)"
+      - "traefik.http.routers.chat-client.rule=Host(`${HOSTNAME}`)"
       - "traefik.http.routers.chat-client.entrypoints=websecure"
       - "traefik.http.routers.chat-client.tls.certresolver=manual"
       - "traefik.http.routers.chat-client.middlewares=secure-headers"

@@ -65,12 +65,27 @@ export default function Home() {
       const currentHost = window.location.hostname
       const currentProtocol = window.location.protocol
       
-      // When behind reverse proxy, use the same domain with /api path
-      const serverUrl = `${currentProtocol}//${currentHost}`
+      // Force HTTP for localhost/local addresses, HTTPS for everything else
+      let detectedProtocol = 'https:' // Default to HTTPS
+      if (currentHost === 'localhost' || 
+          currentHost === '127.0.0.1' || 
+          currentHost === '0.0.0.0' ||
+          currentHost.startsWith('192.168.') ||
+          currentHost.startsWith('10.') ||
+          currentHost.startsWith('172.') ||
+          currentHost.endsWith('.local')) {
+        detectedProtocol = 'http:'
+        console.log('🔓 Forcing HTTP for local address:', currentHost)
+      } else {
+        console.log('🔒 Forcing HTTPS for production domain:', currentHost)
+      }
+      
+      // When behind reverse proxy, use the same domain with detected protocol
+      const serverUrl = `${detectedProtocol}//${currentHost}`
       
       const autoDetectedConfig: ServerConfig = {
         url: serverUrl,
-        port: currentProtocol === 'https:' ? 443 : 80
+        port: detectedProtocol === 'https:' ? 443 : 80
       }
       
       console.log('🔍 Auto-detected server config:', autoDetectedConfig)
@@ -197,6 +212,26 @@ export default function Home() {
 
   // Handle server configuration
   const handleConfigSubmit = useCallback((config: ServerConfig) => {
+    // Force HTTP for localhost/local addresses, HTTPS for everything else
+    if (typeof window !== 'undefined') {
+      const currentHost = window.location.hostname
+      const isLocal = currentHost === 'localhost' || 
+                      currentHost === '127.0.0.1' || 
+                      currentHost === '0.0.0.0' ||
+                      currentHost.startsWith('192.168.') ||
+                      currentHost.startsWith('10.') ||
+                      currentHost.startsWith('172.') ||
+                      currentHost.endsWith('.local')
+      
+      if (isLocal && !config.url.startsWith('http://')) {
+        config.url = config.url.replace('https://', 'http://')
+        console.log('🔓 Forced HTTP for local address:', config.url)
+      } else if (!isLocal && !config.url.startsWith('https://')) {
+        config.url = config.url.replace('http://', 'https://')
+        console.log('🔒 Forced HTTPS for production domain:', config.url)
+      }
+    }
+    
     setChatState(prev => ({
       ...prev,
       serverConfig: config,
@@ -277,7 +312,7 @@ export default function Home() {
       console.error('❌ Login failed with error:', error)
       console.log('📊 Error state - Connection status:', connectionStatusRef.current)
       console.log('🔌 Error state - Socket:', { exists: !!socket, connected: socket?.connected })
-      alert(`Failed to join chat: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`)
+      alert(`Failed to join chat: ${error instanceof Error ? error.message : 'Unknown error'}. Please check the server connection and try again.`)
     }
   }, [connect, emit, socket]) // Removed connectionStatus from dependencies
 

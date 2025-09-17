@@ -56,10 +56,27 @@ export default function ConfigScreen({ onConfigSubmit, initialConfig }: ConfigSc
       return
     }
 
-    // Clean up URL format
+    // Clean up URL format - prepend http:// for local, https:// for others
     let cleanUrl = url.trim()
     if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
-      cleanUrl = `http://${cleanUrl}`
+      // Extract hostname to check if it's local
+      const hostname = cleanUrl.split('/')[0].split(':')[0] // Get just the hostname part
+      
+      const isLocal = hostname === 'localhost' || 
+                      hostname === '127.0.0.1' || 
+                      hostname === '0.0.0.0' ||
+                      hostname.startsWith('192.168.') ||
+                      hostname.startsWith('10.') ||
+                      hostname.startsWith('172.') ||
+                      hostname.endsWith('.local')
+      
+      if (isLocal) {
+        cleanUrl = `http://${cleanUrl}`
+        console.log('🔓 Prepended HTTP for local URL:', cleanUrl)
+      } else {
+        cleanUrl = `https://${cleanUrl}`
+        console.log('🔒 Prepended HTTPS for external URL:', cleanUrl)
+      }
     }
 
     // Remove trailing slash

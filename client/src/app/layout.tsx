@@ -6,6 +6,9 @@ export const metadata: Metadata = {
   description: 'Real-time chat application for Docker bootcamp participants',
   keywords: ['docker', 'chat', 'bootcamp', 'real-time', 'socket.io'],
   authors: [{ name: 'Docker Bootcamp Team' }],
+  icons: {
+    icon: 'favicon.png'
+  }
 }
 
 export const viewport: Viewport = {
