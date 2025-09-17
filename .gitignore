@@ -3,3 +3,7 @@
 client/.next
 **/postgres_data
 **/dist
+traefik/certs/*
+traefik/data/*
+traefik/work/*
+traefik/logs/*

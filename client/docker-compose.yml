@@ -1,16 +1,25 @@
 services:
   chat-client:
+    container_name: chat-client
     build: .
-    ports:
-      - "3000:3000"
     environment:
       - NODE_ENV=production
-      - NEXT_PUBLIC_SERVER_URL=http://localhost:3001
+      - NEXT_PUBLIC_SERVER_URL=https://opensourceteacher.ca/api  # Update this!
       - PORT=3000
       - HOSTNAME=0.0.0.0
     networks:
       - chat-client-network
+      - proxy
     restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      # Main application route (naked domain)
+      - "traefik.http.routers.chat-client.rule=Host(`opensourceteacher.ca`)"
+      - "traefik.http.routers.chat-client.entrypoints=websecure"
+      - "traefik.http.routers.chat-client.tls.certresolver=manual"
+      - "traefik.http.routers.chat-client.middlewares=secure-headers"
+      - "traefik.http.services.chat-client.loadbalancer.server.port=3000"
+      - "traefik.http.routers.chat-client.priority=1"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000"]
       interval: 30s
@@ -21,3 +30,5 @@ services:
 networks:
   chat-client-network:
     driver: bridge
+  proxy:
+    external: true

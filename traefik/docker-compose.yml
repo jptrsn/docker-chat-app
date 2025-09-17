@@ -1,0 +1,103 @@
+version: '3.8'
+
+services:
+  traefik:
+    image: traefik:v3.0
+    container_name: traefik
+    restart: unless-stopped
+    command:
+      # API and dashboard configuration
+      - --api.dashboard=true
+      - --api.debug=true
+      - --api.insecure=true  # Allow dashboard access without auth for bootcamp
+      
+      # EntryPoints
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      
+      # Docker provider
+      - --providers.docker=true
+      - --providers.docker.exposedByDefault=false
+      - --providers.docker.network=proxy
+      
+      # Certificate resolvers - choose one method
+      # Method 1: Automatic DNS challenge (requires API credentials)
+      - --certificatesresolvers.letsencrypt.acme.dnschallenge=${ENABLE_DNS_CHALLENGE:-false}
+      - --certificatesresolvers.letsencrypt.acme.dnschallenge.provider=${DNS_PROVIDER:-cloudflare}
+      - --certificatesresolvers.letsencrypt.acme.dnschallenge.resolvers=1.1.1.1:53,8.8.8.8:53
+      
+      # Method 2: Manual DNS challenge (no API keys needed)
+      - --certificatesresolvers.manual.acme.dnschallenge=${ENABLE_MANUAL_DNS:-true}
+      - --certificatesresolvers.manual.acme.dnschallenge.provider=manual
+      
+      # Common ACME settings
+      - --certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL:-admin@example.com}
+      - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
+      - --certificatesresolvers.manual.acme.email=${ACME_EMAIL:-admin@example.com}
+      - --certificatesresolvers.manual.acme.storage=/letsencrypt/acme.json
+      - --certificatesresolvers.manual.acme.caserver=${ACME_CA_SERVER:-https://acme-v02.api.letsencrypt.org/directory}
+      - --certificatesresolvers.letsencrypt.acme.caserver=${ACME_CA_SERVER:-https://acme-v02.api.letsencrypt.org/directory}
+      
+      # Global redirect to https
+      - --entrypoints.web.http.redirections.entryPoint.to=websecure
+      - --entrypoints.web.http.redirections.entryPoint.scheme=https
+      
+      # Logging
+      - --log.level=${LOG_LEVEL:-INFO}
+      - --accesslog=true
+      
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"  # Dashboard
+    
+    environment:
+      # Only needed for automatic DNS challenges
+      # Cloudflare API credentials
+      - CF_API_EMAIL=${CF_API_EMAIL}
+      - CF_API_KEY=${CF_API_KEY}
+      - CF_DNS_API_TOKEN=${CF_DNS_API_TOKEN}
+      
+      # Route53 (AWS)
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION}
+      
+      # DigitalOcean
+      - DO_AUTH_TOKEN=${DO_AUTH_TOKEN}
+      
+      # Manual DNS challenge doesn't need any API credentials
+      
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./data/letsencrypt:/letsencrypt
+    
+    networks:
+      - proxy
+    
+    labels:
+      - "traefik.enable=true"
+      
+      # Dashboard (accessible at traefik.domain.com)
+      - "traefik.http.routers.traefik-dashboard.rule=Host(`traefik.${DOMAIN}`)"
+      - "traefik.http.routers.traefik-dashboard.entrypoints=websecure"
+      - "traefik.http.routers.traefik-dashboard.tls.certresolver=${CERT_RESOLVER:-manual}"
+      - "traefik.http.routers.traefik-dashboard.service=api@internal"
+      
+      # Security headers middleware
+      - "traefik.http.middlewares.secure-headers.headers.accesscontrolallowmethods=GET,OPTIONS,PUT,POST,DELETE,PATCH"
+      - "traefik.http.middlewares.secure-headers.headers.accesscontrolmaxage=100"
+      - "traefik.http.middlewares.secure-headers.headers.hostsproxyheaders=X-Forwarded-Host"
+      - "traefik.http.middlewares.secure-headers.headers.referrerpolicy=same-origin"
+      - "traefik.http.middlewares.secure-headers.headers.framedeny=true"
+      - "traefik.http.middlewares.secure-headers.headers.browserxssfilter=true"
+      - "traefik.http.middlewares.secure-headers.headers.contenttypenosniff=true"
+      
+      # Rate limiting middleware
+      - "traefik.http.middlewares.rate-limit.ratelimit.average=100"
+      - "traefik.http.middlewares.rate-limit.ratelimit.period=1m"
+      - "traefik.http.middlewares.rate-limit.ratelimit.burst=50"
+
+networks:
+  proxy:
+    external: true

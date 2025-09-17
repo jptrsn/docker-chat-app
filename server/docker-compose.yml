@@ -2,19 +2,29 @@ services:
   chat-server:
     container_name: chat-server
     build: .
-    ports:
-      - "0.0.0.0:3001:3001"  # Explicitly bind to all interfaces
     environment:
       - NODE_ENV=production
       - DATABASE_URL=postgresql://chatuser:chatpass@postgres:5432/chatdb
-      - CORS_ORIGIN=*  # Allow all origins for LAN access
+      - CORS_ORIGIN=https://opensourceteacher.ca  # Update this!
       - PORT=3001
     depends_on:
       postgres:
         condition: service_healthy
     networks:
       - chat-network
+      - proxy
     restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      # API routes (/api/*)
+      - "traefik.http.routers.chat-server.rule=Host(`opensourceteacher.ca`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.chat-server.entrypoints=websecure"
+      - "traefik.http.routers.chat-server.tls.certresolver=manual"
+      - "traefik.http.routers.chat-server.middlewares=api-stripprefix,secure-headers"
+      - "traefik.http.services.chat-server.loadbalancer.server.port=3001"
+      - "traefik.http.routers.chat-server.priority=2"
+      # Strip /api prefix middleware
+      - "traefik.http.middlewares.api-stripprefix.stripprefix.prefixes=/api"
 
   postgres:
     image: postgres:15-alpine
@@ -23,7 +33,6 @@ services:
       POSTGRES_DB: chatdb
       POSTGRES_USER: chatuser
       POSTGRES_PASSWORD: chatpass
-    # No ports exposed - only accessible within Docker network
     volumes:
       - ./postgres_data:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -44,3 +53,5 @@ volumes:
 networks:
   chat-network:
     driver: bridge
+  proxy:
+    external: true
