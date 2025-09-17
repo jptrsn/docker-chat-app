@@ -10,7 +10,7 @@ interface ConfigScreenProps {
 
 export default function ConfigScreen({ onConfigSubmit, initialConfig }: ConfigScreenProps) {
   // Use initial config values directly if provided, otherwise use defaults
-  const [url, setUrl] = useState(initialConfig?.url || 'http://localhost')
+  const [url, setUrl] = useState(initialConfig?.url || 'localhost')
   const [port, setPort] = useState(initialConfig?.port?.toString() || '3001')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
@@ -144,7 +144,7 @@ export default function ConfigScreen({ onConfigSubmit, initialConfig }: ConfigSc
                 type="text"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
-                placeholder="http://localhost or http://192.168.1.100"
+                placeholder="localhost or 192.168.1.100"
                 className="input-field input-with-icon"
                 disabled={isSubmitting}
                 autoComplete="off"
@@ -215,8 +215,8 @@ export default function ConfigScreen({ onConfigSubmit, initialConfig }: ConfigSc
           <ul className="text-xs text-blue-700 space-y-1">
             <li>• Current page: {currentPageHost}</li>
             <li>• Auto-detected: {initialConfig ? `${initialConfig.url}:${initialConfig.port}` : 'None'}</li>
-            <li>• For local development: http://localhost:3001</li>
-            <li>• For Docker containers: http://chat-server:3001</li>
+            <li>• For local development: localhost:3001</li>
+            <li>• For Docker containers: chat-server:3001</li>
           </ul>
         </div>
       </div>

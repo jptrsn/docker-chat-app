@@ -16,6 +16,7 @@ services:
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
+      
       # API routes (/api/*)
       - "traefik.http.routers.chat-server.rule=Host(`opensourceteacher.ca`) && PathPrefix(`/api`)"
       - "traefik.http.routers.chat-server.entrypoints=websecure"
@@ -23,8 +24,18 @@ services:
       - "traefik.http.routers.chat-server.middlewares=api-stripprefix,secure-headers"
       - "traefik.http.services.chat-server.loadbalancer.server.port=3001"
       - "traefik.http.routers.chat-server.priority=2"
+      
       # Strip /api prefix middleware
       - "traefik.http.middlewares.api-stripprefix.stripprefix.prefixes=/api"
+      
+      # WebSocket support - CRITICAL ADDITION
+      - "traefik.http.routers.chat-server.middlewares=api-stripprefix,secure-headers,websocket-headers"
+      - "traefik.http.middlewares.websocket-headers.headers.customrequestheaders.Connection=upgrade"
+      - "traefik.http.middlewares.websocket-headers.headers.customrequestheaders.Upgrade=websocket"
+      - "traefik.http.middlewares.websocket-headers.headers.customrequestheaders.Sec-WebSocket-Extensions="
+      - "traefik.http.middlewares.websocket-headers.headers.customrequestheaders.Sec-WebSocket-Key="
+      - "traefik.http.middlewares.websocket-headers.headers.customrequestheaders.Sec-WebSocket-Version="
+
 
   postgres:
     image: postgres:15-alpine

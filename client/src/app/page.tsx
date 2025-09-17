@@ -41,9 +41,11 @@ export default function Home() {
       try {
         const url = new URL(envServerUrl)
         const serverConfig: ServerConfig = {
-          url: `${url.protocol}//${url.hostname}`,
-          port: parseInt(url.port) || (url.protocol === 'https:' ? 443 : 80)
+          url: envServerUrl, // Use the full URL including path
+          port: url.port ? parseInt(url.port) : (url.protocol === 'https:' ? 443 : 80)
         }
+        
+        console.log('🔧 Using environment server config:', serverConfig)
         
         setChatState(prev => ({ 
           ...prev, 
@@ -63,21 +65,17 @@ export default function Home() {
       const currentHost = window.location.hostname
       const currentProtocol = window.location.protocol
       
-      // Server URL should match the client's hostname (without port)
+      // When behind reverse proxy, use the same domain with /api path
       const serverUrl = `${currentProtocol}//${currentHost}`
-      
-      // Default server port is 3001
-      const serverPort = 3001
       
       const autoDetectedConfig: ServerConfig = {
         url: serverUrl,
-        port: serverPort
+        port: currentProtocol === 'https:' ? 443 : 80
       }
       
-      console.log('Auto-detected server config:', autoDetectedConfig)
+      console.log('🔍 Auto-detected server config:', autoDetectedConfig)
       
-      // Set the auto-detected config but don't mark as configured
-      // This will pre-fill the form but still show the config screen
+      // Set the auto-detected config
       setChatState(prev => ({ 
         ...prev, 
         serverConfig: autoDetectedConfig,

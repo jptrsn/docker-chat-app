@@ -28,8 +28,12 @@ const io = new Server<
     origin: process.env.CORS_ORIGIN || "*",
     methods: ["GET", "POST"],
     credentials: true
-  }
-});
+  },
+  // Allow both HTTP and HTTPS in development, HTTPS in production
+  allowEIO3: true,
+  transports: ['websocket', 'polling'],
+  path: '/socket.io/', // Default path
+})
 
 // Middleware
 app.use(cors({

@@ -4,9 +4,11 @@ services:
     build: .
     environment:
       - NODE_ENV=production
-      - NEXT_PUBLIC_SERVER_URL=https://opensourceteacher.ca/api  # Update this!
+      - NEXT_PUBLIC_SERVER_URL=https://opensourceteacher.ca
       - PORT=3000
       - HOSTNAME=0.0.0.0
+    # ports:
+    #   - "3000:3000"
     networks:
       - chat-client-network
       - proxy
