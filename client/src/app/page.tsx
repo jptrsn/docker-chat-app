@@ -5,6 +5,7 @@ import ConfigScreen from '@/components/ConfigScreen'
 import LoginScreen from '@/components/LoginScreen'
 import ChatScreen from '@/components/ChatScreen'
 import ConnectionStatus from '@/components/ConnectionStatus'
+import PWAProvider from '@/components/PWAProvider'
 import { useSocket } from '@/hooks/useSocket'
 import type { ServerConfig, Message, AppScreen, ChatState } from '@/types'
 
@@ -381,46 +382,48 @@ export default function Home() {
   }, [disconnect])
 
   return (
-    <div className="relative w-full h-full">
-      {/* Connection Status */}
-      <ConnectionStatus 
-        connectionStatus={chatState.connectionStatus}
-        show={currentScreen === 'chat' || currentScreen === 'login'}
-      />
-
-      {/* Screens */}
-      {currentScreen === 'config' && (
-        <ConfigScreen 
-          onConfigSubmit={handleConfigSubmit} 
-          initialConfig={chatState.serverConfig}
+    <PWAProvider>
+      <div className="relative w-full h-full">
+        {/* Connection Status */}
+        <ConnectionStatus 
+          connectionStatus={chatState.connectionStatus}
+          show={currentScreen === 'chat' || currentScreen === 'login'}
         />
-      )}
 
-      {currentScreen === 'login' && (
-        <LoginScreen 
-          onLogin={handleLogin}
-          onBackToConfig={handleBackToConfig}
-          isConnecting={chatState.connectionStatus.status === 'connecting'}
-          connectionError={chatState.connectionStatus.status === 'error' ? chatState.connectionStatus.message : null}
-        />
-      )}
+        {/* Screens */}
+        {currentScreen === 'config' && (
+          <ConfigScreen 
+            onConfigSubmit={handleConfigSubmit} 
+            initialConfig={chatState.serverConfig}
+          />
+        )}
 
-      {currentScreen === 'chat' && chatState.username && (
-        <ChatScreen
-          messages={chatState.messages || []}
-          activeUsers={chatState.activeUsers || []}
-          typingUsers={chatState.typingUsers || []}
-          currentUsername={chatState.username}
-          onSendMessage={handleSendMessage}
-          onLogout={handleLogout}
-          onTyping={handleTyping}
-          onStopTyping={handleStopTyping}
-          serverConfig={chatState.serverConfig}
-        />
-      )}
+        {currentScreen === 'login' && (
+          <LoginScreen 
+            onLogin={handleLogin}
+            onBackToConfig={handleBackToConfig}
+            isConnecting={chatState.connectionStatus.status === 'connecting'}
+            connectionError={chatState.connectionStatus.status === 'error' ? chatState.connectionStatus.message : null}
+          />
+        )}
 
-      {/* Messages scroll anchor */}
-      <div ref={messagesEndRef} />
-    </div>
+        {currentScreen === 'chat' && chatState.username && (
+          <ChatScreen
+            messages={chatState.messages || []}
+            activeUsers={chatState.activeUsers || []}
+            typingUsers={chatState.typingUsers || []}
+            currentUsername={chatState.username}
+            onSendMessage={handleSendMessage}
+            onLogout={handleLogout}
+            onTyping={handleTyping}
+            onStopTyping={handleStopTyping}
+            serverConfig={chatState.serverConfig}
+          />
+        )}
+
+        {/* Messages scroll anchor */}
+        <div ref={messagesEndRef} />
+      </div>
+    </PWAProvider>
   )
 }
