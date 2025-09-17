@@ -29,29 +29,138 @@ export function useSocket(serverConfig: ServerConfig | null) {
       message: 'Connecting to server...'
     })
 
-    // Use the serverConfig URL directly (should be https://domain.com/api)
-    const serverUrl = serverConfig.port && serverConfig.port !== 443 && serverConfig.port !== 80
-      ? `${serverConfig.url}:${serverConfig.port}`
-      : serverConfig.url
+    // Determine the correct server URL and socket path
+    let serverUrl = serverConfig.url
+    let socketPath = '/socket.io/'
+    
+    // For production with reverse proxy, we connect to the same domain
+    // but the socket.io path is proxied to the backend
+    if (serverUrl.includes('opensourceteacher.ca') || serverUrl.startsWith('https://')) {
+      // Production setup - use same domain, default socket.io path
+      socketPath = '/socket.io/'
+    } else {
+      // Development setup - direct connection to backend
+      if (serverConfig.port && serverConfig.port !== 443 && serverConfig.port !== 80) {
+        serverUrl = `${serverUrl}:${serverConfig.port}`
+      }
+    }
 
     console.log('🔌 Connecting to:', serverUrl)
+    console.log('🛤️  Socket.IO path:', socketPath)
 
     try {
       const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(serverUrl, {
-        transports: ['websocket', 'polling'],
-        timeout: 10000,
+        path: socketPath,
+        // Force WebSocket transport first in production, polling first for development
+        transports: serverUrl.startsWith('https://') 
+          ? ['websocket', 'polling'] 
+          : ['polling', 'websocket'],
+        timeout: 15000, // Increased timeout for HTTPS
         reconnection: true,
         reconnectionDelay: 1000,
         reconnectionAttempts: 5,
         forceNew: true,
-        // Important: Use secure connection when connecting to HTTPS
+        // Automatically determine secure connection
         secure: serverUrl.startsWith('https://'),
-        // Handle reverse proxy path if needed
-        path: '/socket.io/', // Default path, but can be customized
+        // Additional options for reverse proxy setup
+        upgrade: true,
+        rememberUpgrade: false,
+        // CORS handling
+        withCredentials: false,
+        // Polling options for fallback
+        autoConnect: true
       })
 
       socketRef.current = socket
-      // ... rest of the connection logic
+
+      // Connection event handlers
+      socket.on('connect', () => {
+        console.log('✅ Connected to socket server:', socket.id)
+        console.log('🚀 Transport:', socket.io.engine.transport.name)
+        setConnectionStatus({
+          status: 'connected',
+          message: `Connected via ${socket.io.engine.transport.name}`
+        })
+      })
+
+      socket.on('connect_error', (error) => {
+        console.error('❌ Connection error:', error)
+        console.log('🔍 Error message:', error.message)
+        
+        let errorMessage = 'Connection failed'
+        if (error.message.includes('timeout')) {
+          errorMessage = 'Connection timeout - server may be unreachable'
+        } else if (error.message.includes('ECONNREFUSED')) {
+          errorMessage = 'Connection refused - check server status'
+        } else if (error.message.includes('Transport')) {
+          errorMessage = 'Transport error - trying fallback connection method'
+        } else {
+          errorMessage = `Connection error: ${error.message}`
+        }
+        
+        setConnectionStatus({
+          status: 'error',
+          message: errorMessage
+        })
+      })
+
+      socket.on('disconnect', (reason) => {
+        console.log('🔌 Disconnected:', reason)
+        if (reason === 'io server disconnect') {
+          // Server initiated disconnect, don't auto-reconnect
+          setConnectionStatus({
+            status: 'disconnected',
+            message: 'Disconnected by server'
+          })
+        } else {
+          // Client or network initiated disconnect, will auto-reconnect
+          setConnectionStatus({
+            status: 'connecting',
+            message: 'Reconnecting...'
+          })
+        }
+      })
+
+      // Use socket.io for built-in Socket.IO manager events
+      socket.io.on('reconnect', (attemptNumber: number) => {
+        console.log('🔄 Reconnected after', attemptNumber, 'attempts')
+        setConnectionStatus({
+          status: 'connected',
+          message: `Reconnected (attempt ${attemptNumber})`
+        })
+      })
+
+      socket.io.on('reconnect_attempt', (attemptNumber: number) => {
+        console.log('🔄 Reconnection attempt', attemptNumber)
+        setConnectionStatus({
+          status: 'connecting',
+          message: `Reconnecting... (attempt ${attemptNumber})`
+        })
+      })
+
+      socket.io.on('reconnect_failed', () => {
+        console.error('❌ Failed to reconnect')
+        setConnectionStatus({
+          status: 'error',
+          message: 'Failed to reconnect to server'
+        })
+      })
+
+      // Transport change logging - use engine events
+      socket.io.engine.on('upgrade', () => {
+        console.log('⬆️ Upgraded to:', socket.io.engine.transport.name)
+        setConnectionStatus(prev => ({
+          ...prev,
+          message: `Connected via ${socket.io.engine.transport.name}`
+        }))
+      })
+
+      socket.io.engine.on('upgradeError', (error: Error) => {
+        console.warn('⚠️ Transport upgrade failed:', error.message)
+      })
+
+      return socket
+
     } catch (error) {
       console.error('Error creating socket:', error)
       setConnectionStatus({

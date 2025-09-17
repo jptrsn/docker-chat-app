@@ -5,7 +5,7 @@ services:
     environment:
       - NODE_ENV=production
       - DATABASE_URL=postgresql://chatuser:chatpass@postgres:5432/chatdb
-      - CORS_ORIGIN=https://opensourceteacher.ca  # Update this!
+      - CORS_ORIGIN=https://opensourceteacher.ca
       - PORT=3001
     depends_on:
       postgres:
@@ -17,25 +17,28 @@ services:
     labels:
       - "traefik.enable=true"
       
-      # API routes (/api/*)
-      - "traefik.http.routers.chat-server.rule=Host(`opensourceteacher.ca`) && PathPrefix(`/api`)"
-      - "traefik.http.routers.chat-server.entrypoints=websecure"
-      - "traefik.http.routers.chat-server.tls.certresolver=manual"
-      - "traefik.http.routers.chat-server.middlewares=api-stripprefix,secure-headers"
+      # API routes (/api/*) - WITH path stripping
+      - "traefik.http.routers.chat-server-api.rule=Host(`opensourceteacher.ca`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.chat-server-api.entrypoints=websecure"
+      - "traefik.http.routers.chat-server-api.tls.certresolver=manual"
+      - "traefik.http.routers.chat-server-api.middlewares=api-stripprefix,secure-headers"
+      - "traefik.http.routers.chat-server-api.service=chat-server"
+      - "traefik.http.routers.chat-server-api.priority=10"
+      
+      # Socket.IO routes (/socket.io/*) - WITHOUT path stripping
+      - "traefik.http.routers.chat-server-socket.rule=Host(`opensourceteacher.ca`) && PathPrefix(`/socket.io`)"
+      - "traefik.http.routers.chat-server-socket.entrypoints=websecure"
+      - "traefik.http.routers.chat-server-socket.tls.certresolver=manual"
+      - "traefik.http.routers.chat-server-socket.middlewares=secure-headers"
+      - "traefik.http.routers.chat-server-socket.service=chat-server"
+      - "traefik.http.routers.chat-server-socket.priority=10"
+      
+      # Service definition
       - "traefik.http.services.chat-server.loadbalancer.server.port=3001"
-      - "traefik.http.routers.chat-server.priority=2"
       
-      # Strip /api prefix middleware
-      - "traefik.http.middlewares.api-stripprefix.stripprefix.prefixes=/api"
-      
-      # WebSocket support - CRITICAL ADDITION
-      - "traefik.http.routers.chat-server.middlewares=api-stripprefix,secure-headers,websocket-headers"
-      - "traefik.http.middlewares.websocket-headers.headers.customrequestheaders.Connection=upgrade"
-      - "traefik.http.middlewares.websocket-headers.headers.customrequestheaders.Upgrade=websocket"
-      - "traefik.http.middlewares.websocket-headers.headers.customrequestheaders.Sec-WebSocket-Extensions="
-      - "traefik.http.middlewares.websocket-headers.headers.customrequestheaders.Sec-WebSocket-Key="
-      - "traefik.http.middlewares.websocket-headers.headers.customrequestheaders.Sec-WebSocket-Version="
-
+      # Strip /api prefix middleware (only applied to API routes)
+      - "traefik.http.middlewares.api-stripprefix.replacepathregex.regex=^/api/(.*)"
+      - "traefik.http.middlewares.api-stripprefix.replacepathregex.replacement=/$${1}"
 
   postgres:
     image: postgres:15-alpine
