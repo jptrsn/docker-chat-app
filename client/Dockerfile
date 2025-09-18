@@ -1,5 +1,5 @@
-# Use Node.js 18 Alpine as base image
-FROM node:18-alpine AS base
+# Use Node.js 24 Alpine as base image
+FROM node:24-alpine AS base
 RUN apk add --no-cache libc6-compat
 
 # Install dependencies only when needed
