@@ -233,6 +233,9 @@ if [ $? -eq 0 ]; then
     
     # Create Traefik acme.json file
     ACME_JSON="data/letsencrypt/acme.json"
+    # Ensure directory exists and has proper permissions
+    mkdir -p "$(dirname "$ACME_JSON")"
+    sudo chown $(whoami) "$ACME_JSON" 2>/dev/null || touch "$ACME_JSON"
     cat > "$ACME_JSON" << EOF
 {
   "manual": {

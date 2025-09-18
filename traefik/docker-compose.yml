@@ -80,6 +80,22 @@ services:
       - "traefik.http.routers.traefik-dashboard.tls.certresolver=${CERT_RESOLVER:-manual}"
       - "traefik.http.routers.traefik-dashboard.service=api@internal"
       
+      # Google Slides Redirect - HTTP to HTTPS redirect first
+      - "traefik.http.routers.slides-redirect-http.rule=Host(`slides.${DOMAIN}`)"
+      - "traefik.http.routers.slides-redirect-http.entrypoints=web"
+      - "traefik.http.routers.slides-redirect-http.middlewares=slides-redirect"
+      
+      # Google Slides Redirect - HTTPS with SSL
+      - "traefik.http.routers.slides-redirect-https.rule=Host(`slides.${DOMAIN}`)"
+      - "traefik.http.routers.slides-redirect-https.entrypoints=websecure"
+      - "traefik.http.routers.slides-redirect-https.tls.certresolver=${CERT_RESOLVER:-manual}"
+      - "traefik.http.routers.slides-redirect-https.middlewares=slides-redirect"
+      
+      # Redirect middleware - 302 temporary redirect to Google Slides
+      - "traefik.http.middlewares.slides-redirect.redirectregex.regex=^.*"
+      - "traefik.http.middlewares.slides-redirect.redirectregex.replacement=https://docs.google.com/presentation/d/e/2PACX-1vTX6Wh8RZSCQaSYpMwKXnF2iXReLXnru3Euo9Xlft2S5nEsmTO8Q4BibEeKJ-C1SZTP8pEqABgN7d3r/pub?start=false&loop=true&delayms=60000"
+      - "traefik.http.middlewares.slides-redirect.redirectregex.permanent=false"
+      
       # Security headers middleware - WEBSOCKET COMPATIBLE
       - "traefik.http.middlewares.secure-headers.headers.accesscontrolallowmethods=GET,OPTIONS,PUT,POST,DELETE,PATCH"
       - "traefik.http.middlewares.secure-headers.headers.accesscontrolmaxage=100"
