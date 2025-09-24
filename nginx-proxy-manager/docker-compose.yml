@@ -1,0 +1,65 @@
+# Docker Compose file for WordPress with MariaDB and Nginx Proxy Manager
+# This setup uses network isolation to separate internal and external traffic
+
+services:  # Top-level key that defines all containers in this application
+  
+  # Nginx Proxy Manager - handles reverse proxy and SSL certificates
+  nginx-proxy-manager:
+    image: 'jc21/nginx-proxy-manager:latest'  # Official Nginx Proxy Manager image
+    restart: unless-stopped  # Restart policy - won't restart if manually stopped
+    ports:
+      - '80:80'    # HTTP port - maps host port 80 to container port 80
+      - '443:443'  # HTTPS port - maps host port 443 to container port 443  
+      - '81:81'    # Admin interface - access NPM web UI at http://localhost:81
+      # The default credentials to login are username `admin@example.com` and password `changeme`
+    volumes:
+      - npm_data:/data      # Persistent storage for NPM configuration and certificates
+      - npm_letsencrypt:/etc/letsencrypt  # Let's Encrypt SSL certificates storage
+    networks:
+      - nginx  # Connected to nginx network to communicate with WordPress
+    environment:
+      - DB_SQLITE_FILE=/data/database.sqlite  # Use SQLite for NPM's internal database
+
+  db:  # Database service - only accessible internally
+    image: mariadb:10.6.4-focal
+    command: '--default-authentication-plugin=mysql_native_password'
+    volumes:
+      - db_data:/var/lib/mysql
+    restart: always
+    environment: 
+      - MYSQL_ROOT_PASSWORD=somewordpress  
+      - MYSQL_DATABASE=wordpress          
+      - MYSQL_USER=wordpress              
+      - MYSQL_PASSWORD=wordpress          
+    networks:
+      - default
+  wordpress:
+    image: wordpress:latest
+    volumes:
+      - wp_data:/var/www/html
+    # No direct port mapping - traffic comes through nginx-proxy-manager
+    # This improves security by not exposing WordPress directly to the host
+    restart: always
+    environment:  
+      - WORDPRESS_DB_HOST=db        
+      - WORDPRESS_DB_USER=wordpress 
+      - WORDPRESS_DB_PASSWORD=wordpress  
+      - WORDPRESS_DB_NAME=wordpress      
+    networks:
+      - default  # Connected to default network to communicate with database
+      - nginx    # Connected to nginx network so proxy manager can reach it
+
+volumes:
+  db_data:           # Volume for database files - data persists even if 'db' container is removed
+  wp_data:           # Volume for WordPress files - themes, plugins, uploads persist here
+  npm_data:          # Volume for Nginx Proxy Manager configuration and database
+  npm_letsencrypt:   # Volume for SSL certificates managed by Let's Encrypt
+
+# Networks section - defines custom networks for traffic isolation
+networks:
+  nginx:    # Custom network for external-facing services (nginx-proxy-manager and wordpress)
+            # This network handles traffic that comes from outside the Docker environment
+  
+  # 'default' network is autoatically created by Docker Compose
+  # Used for internal communication between wordpress and database
+  # Database is NOT connected to nginx network, so it's isolated from external access

@@ -1,0 +1,48 @@
+# Docker Compose file version is implied (modern Docker Compose doesn't require version)
+# This file defines a multi-container application with WordPress and MariaDB
+
+services:  # Top-level key that defines all containers in this application
+  db:  # Service name - this becomes the hostname that other containers can use to connect
+    # We use a mariadb image which supports both amd64 & arm64 architecture
+    image: mariadb:10.6.4-focal  # Docker image to use (mariadb version 10.6.4 based on Ubuntu Focal)
+    
+    # Command to override the default container startup command
+    command: '--default-authentication-plugin=mysql_native_password'  # Sets MySQL auth method for compatibility
+    
+    volumes:  # Mount points for persistent data storage
+      - db_data:/var/lib/mysql  # Maps named volume 'db_data' to MySQL's data directory inside container
+    
+    restart: always  # Container restart policy - automatically restart if it stops/crashes
+    
+    environment:  # Environment variables passed into the container
+      - MYSQL_ROOT_PASSWORD=somewordpress  # Sets the MySQL root user password
+      - MYSQL_DATABASE=wordpress          # Creates a database named 'wordpress' on startup
+      - MYSQL_USER=wordpress              # Creates a non-root user named 'wordpress'
+      - MYSQL_PASSWORD=wordpress          # Sets password for the 'wordpress' user
+    
+    expose:  # Ports exposed to other containers (not to host machine)
+      - 3306   # Standard MySQL/MariaDB port for database connections
+      - 33060  # MySQL X Protocol port (for newer MySQL features)
+
+  wordpress:  # Second service - the WordPress web application
+    image: wordpress:latest  # Official WordPress image, 'latest' tag gets most recent version
+    
+    volumes:  # Persistent storage for WordPress files
+      - wp_data:/var/www/html  # Maps named volume 'wp_data' to WordPress web root directory
+    
+    ports:  # Port mapping from host machine to container
+      - 8085:80  # Maps host port 8085 to container port 80 (host:container format)
+               # This allows access via http://localhost:8085
+    
+    restart: always  # Same restart policy as database
+    
+    environment:  # WordPress configuration through environment variables
+      - WORDPRESS_DB_HOST=db        # Database hostname (uses service name 'db')
+      - WORDPRESS_DB_USER=wordpress # Database username (matches MYSQL_USER above)
+      - WORDPRESS_DB_PASSWORD=wordpress  # Database password (matches MYSQL_PASSWORD above)
+      - WORDPRESS_DB_NAME=wordpress      # Database name (matches MYSQL_DATABASE above)
+
+# Named volumes section - defines persistent storage that survives container restarts
+volumes:
+  db_data:    # Volume for database files - data persists even if 'db' container is removed
+  wp_data:    # Volume for WordPress files - themes, plugins, uploads persist here

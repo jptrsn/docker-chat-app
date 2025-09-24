@@ -36,6 +36,7 @@ export default function Home() {
   // Check for environment variable configuration on mount
   useEffect(() => {
     const envServerUrl = process.env.NEXT_PUBLIC_SERVER_URL
+    console.log('env', process.env)
     
     if (envServerUrl) {
       try {
